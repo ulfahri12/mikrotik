@@ -61,6 +61,19 @@
 
         </div>
     </div>
-
+{{-- Auto login ke MikroTik setelah bayar --}}
+@if(session('hotspot_username'))
+<form id="redirectLogin" action="http://192.168.88.1/login" method="post" style="display:none">
+    <input type="hidden" name="username" value="{{ session('hotspot_username') }}">
+    <input type="hidden" name="password" value="{{ session('hotspot_password') }}">
+    <input type="hidden" name="dst" value="https://google.com">
+</form>
+<script>
+    // Auto submit ke MikroTik setelah 2 detik
+    setTimeout(function() {
+        document.getElementById('redirectLogin').submit();
+    }, 2000);
+</script>
+@endif
 </body>
 </html>

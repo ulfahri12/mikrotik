@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\MikrotikHotspotController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PortalController;
 use App\Services\MikrotikService;
@@ -65,3 +66,21 @@ Route::get('/redeem/{code}', function ($code) {
 Route::get('/', function () {
     return redirect('/portal');
 });
+
+
+Route::get('/proxy/snap', function () {
+    try {
+        $snapJs = file_get_contents('https://app.sandbox.midtrans.com/snap/snap.js');
+        return response($snapJs)->header('Content-Type', 'application/javascript');
+    } catch (\Exception $e) {
+        return response('// Error: ' . $e->getMessage(), 500)
+            ->header('Content-Type', 'application/javascript');
+    }
+});
+
+
+// Route::prefix('user')->name('hotspot.')->group(function () {
+//     Route::get('/login', [MikrotikHotspotController::class, 'login'])->name('login');
+//     Route::get('/status', [MikrotikHotspotController::class, 'status'])->name('status');
+//     Route::get('/logout', [MikrotikHotspotController::class, 'logout'])->name('logout');
+// });

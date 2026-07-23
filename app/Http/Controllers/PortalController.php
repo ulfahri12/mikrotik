@@ -124,12 +124,14 @@ class PortalController extends Controller
                 'email' => $request->email,
                 'username' => 'user_' . Str::random(6),
                 'password' => Str::random(8),
+                'mac_address' => session('mac'),
             ]
         );
 
         $customer->update([
             'name' => $request->name,
             'email' => $request->email ?? $customer->email,
+            'mac_address' => session('mac') ?? $customer->mac_address,
         ]);
 
         $transaction = Transaction::create([
@@ -194,5 +196,46 @@ class PortalController extends Controller
     {
         $customer = Customer::with('package')->findOrFail($customerId);
         return view('portal.success', compact('customer'));
+    }
+
+
+    public function userStatus(Request $request)
+    {
+        $mac = $request->get('mac', session('mac'));
+        $ip = $request->get('ip', session('ip'));
+        $uptime = $request->get('uptime', '0s');
+        $sessionTimeLeft = $request->get('session-time-left', '');
+        $loginBy = $request->get('login-by', '');
+
+        // Cari customer berdasarkan MAC atau IP
+        $customer = null;
+        if ($mac) {
+            $username = 'T-' . strtoupper(str_replace('-', ':', $mac));
+            // Cek di hotspot active via MikroTik API
+            try {
+                $device = \App\Models\MikrotikDevice::where('is_active', true)->first();
+                if ($device) {
+                    $service = new MikrotikService($device);
+                    $actives = $service->getActiveUsers();
+                    foreach ($actives as $active) {
+                        if (isset($active['mac-address']) && strtoupper($active['mac-address']) === strtoupper($mac)) {
+                            $uptime = $active['uptime'] ?? $uptime;
+                            $sessionTimeLeft = $active['session-time-left'] ?? $sessionTimeLeft;
+                            break;
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+            }
+
+            // Cari customer di database
+            $customer = \App\Models\Customer::where('is_active', true)
+                ->where(function ($q) use ($mac) {
+                    $q->where('username', 'T-' . strtoupper(str_replace('-', ':', $mac)))
+                        ->orWhere('username', 'like', '%' . substr(str_replace(':', '', $mac), -6) . '%');
+                })->first();
+        }
+
+        return view('portal.user-status', compact('customer', 'uptime', 'sessionTimeLeft', 'loginBy', 'mac', 'ip'));
     }
 }

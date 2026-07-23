@@ -95,40 +95,46 @@ class MidtransService
     }
 
     private function markAsPaid(Transaction $transaction, string $paymentType): void
-    {
-        if ($transaction->status === 'paid') return;
+{
+    if ($transaction->status === 'paid') return;
 
-        $transaction->update([
-            'status' => 'paid',
-            'paid_at' => now(),
-            'payment_channel' => $paymentType,
-        ]);
+    $transaction->update([
+        'status' => 'paid',
+        'paid_at' => now(),
+        'payment_channel' => $paymentType,
+    ]);
 
-        // Aktifkan customer di MikroTik
-        $customer = $transaction->customer;
-        $device = MikrotikDevice::where('is_active', true)->first();
+    $customer = $transaction->customer;
+    $device = MikrotikDevice::where('is_active', true)->first();
 
-        if ($customer && $device) {
-            try {
-                $mikrotik = new MikrotikService($device);
-                $mikrotik->addUser(
-                    $customer->username,
-                    $customer->password,
-                    $transaction->package->mikrotik_profile
-                );
-                $customer->update([
-                    'is_active' => true,
-                    'package_id' => $transaction->package_id,
-                    'expired_at' => now()->addDays($transaction->package->duration_days),
-                ]);
-            } catch (\Exception $e) {
-                Log::error('MikroTik activation failed: ' . $e->getMessage());
-            }
-        }
-
-        // Kirim email
-        if ($customer->email ?? null) {
-            Mail::to($customer->email)->send(new TransactionSuccessMail($transaction));
+    if ($customer && $device) {
+        try {
+            $mikrotik = new MikrotikService($device);
+            $mikrotik->addUser(
+                $customer->username,
+                $customer->password,
+                $transaction->package->mikrotik_profile
+            );
+            $customer->update([
+                'is_active' => true,
+                'package_id' => $transaction->package_id,
+                'expired_at' => now()->addDays($transaction->package->duration_days),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('MikroTik activation failed: ' . $e->getMessage());
         }
     }
+
+    // Kirim email
+    if ($customer->email ?? null) {
+        Mail::to($customer->email)->send(new TransactionSuccessMail($transaction));
+    }
+
+    // Simpan ke session untuk auto-login di halaman sukses
+    session([
+        'hotspot_username' => $customer->username,
+        'hotspot_password' => $customer->password,
+        'hotspot_mac' => $customer->mac_address,
+    ]);
+}
 }
