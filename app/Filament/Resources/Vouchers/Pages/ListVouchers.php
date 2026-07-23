@@ -23,19 +23,19 @@ class ListVouchers extends ListRecords
             Action::make('generate_batch')
                 ->label('Generate Voucher')
                 ->icon('heroicon-o-sparkles')
-                ->schema([
-                    Select::make('package_id')
-                        ->label('Paket')
-                        ->options(Package::where('is_active', true)->pluck('name', 'id'))
-                        ->required(),
-                    TextInput::make('quantity')
-                        ->label('Jumlah Voucher')
-                        ->numeric()
-                        ->default(10)
-                        ->minValue(1)
-                        ->maxValue(100)
-                        ->required(),
-                ])
+                ->form([
+    Select::make('package_id')
+        ->label('Paket')
+        ->options(Package::where('is_active', true)->pluck('name', 'id'))
+        ->required(),
+    TextInput::make('quantity')
+        ->label('Jumlah Voucher')
+        ->numeric()
+        ->default(10)
+        ->minValue(1)
+        ->maxValue(100)
+        ->required(),
+])
                 ->action(function (array $data) {
                     $package = Package::find($data['package_id']);
 
